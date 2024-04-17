@@ -3,7 +3,7 @@ package main
 import "cp/db"
 
 func init() {
-	db.CreateDB()
+	db.CreateConn()
 }
 
 func main() {

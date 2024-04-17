@@ -9,7 +9,7 @@ import (
 )
 
 // create a db connection
-func createConn() (*sql.DB, error) {
+func CreateConn() (*sql.DB, error) {
 	var db *sql.DB
 	var err error
 
@@ -20,6 +20,7 @@ func createConn() (*sql.DB, error) {
 
 	psqlInfo := fmt.Sprintf("host=%s port=%s user=%s password=%s sslmode=disable", host, port, user, password)
 	db, err = sql.Open("postgres", psqlInfo)
+	defer db.Close()
 	if err != nil {
 		log.Fatalf("Couldnt connect due to : %s", err)
 		return nil, err
@@ -31,14 +32,25 @@ func createConn() (*sql.DB, error) {
 		return nil, err
 	}
 
+	err = CreateDB()
+	if err != nil {
+		log.Fatalf("Failed to create db: %s", err)
+		return nil, err
+	}
+	_, err = db.Exec("USE employee")
+	if err != nil {
+		log.Fatalf("Failed to change db: %s", err)
+		return nil, err
+	}
 	log.Printf("\nSuccessfully connected to database!\n")
+
 	return db, nil
 
 }
 
 // create a db transaction
 func transaction() (*sql.Tx, error) {
-	db, err := createConn()
+	db, err := CreateConn()
 	if err != nil {
 		log.Fatalf("Couldnt connect due to : %s", err)
 		return nil, err
@@ -57,21 +69,19 @@ func transaction() (*sql.Tx, error) {
 // CreateDB creates a db used by the app
 func CreateDB() error {
 	tx, err := transaction()
-	if err != nil {
-		log.Fatalf("Couldnt create a transaction due to : %s", err)
-		return err
-	}
-
+	error_handle(err)
 	_, err = tx.Exec(`SELECT 'CREATE DATABASE employees'
 					  WHERE NOT EXISTS 
 					  (SELECT FROM pg_database WHERE datname = 'employee')`)
-	if err != nil {
-		log.Fatalf("Couldnt create db due to : %s", err)
-		return err
-	}
-
+	error_handle(err)
 	log.Println("Created db successfully")
 	return nil
 }
 
-// create
+// error handling
+func error_handle(err error) error {
+	if err != nil {
+		return fmt.Errorf("error: %v", err)
+	}
+	return nil
+}
